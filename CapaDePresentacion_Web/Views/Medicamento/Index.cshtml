@@ -1,0 +1,55 @@
+﻿@model IEnumerable<CapaDeEntidades.Medicamento>
+
+@{
+    ViewData["Title"] = ViewData["Titulo"];
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>@ViewData["Title"]</h1>
+        <div>
+            <a asp-action="Index" asp-route-soloCriticos="false" class="btn btn-outline-primary">Mostrar Todos</a>
+            <a asp-action="Index" asp-route-soloCriticos="true" class="btn btn-outline-danger">Ver Críticos</a>
+        </div>
+    </div>
+
+    <table class="table table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Precio Venta</th>
+                <th>Stock Actual</th>
+                <th>Stock Mínimo</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                // las filas con stock critico van resaltadas en rojo
+                string claseFila = item.TieneStockCritico ? "table-danger" : "";
+                
+                <tr class="@claseFila">
+                    <td>@item.IdMedicamento</td>
+                    <td><strong>@item.Nombre</strong></td>
+                    <td>@item.Descripcion</td>
+                    <td>$@item.PrecioVenta</td>
+                    <td>@item.StockActual</td>
+                    <td>@item.StockMinimo</td>
+                    <td>
+                        @if (item.TieneStockCritico)
+                        {
+                            <span class="badge bg-danger">¡REABASTECER!</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Normal</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
