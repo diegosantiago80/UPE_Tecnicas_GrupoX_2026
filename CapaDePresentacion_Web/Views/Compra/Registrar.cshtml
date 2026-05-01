@@ -1,0 +1,143 @@
+﻿@{
+    ViewData["Title"] = "Registrar Compra a Laboratorio";
+    var laboratorios = ViewBag.Laboratorios as List<CapaDeEntidades.Laboratorio>;
+    var medicamentos = ViewBag.Medicamentos as List<CapaDeEntidades.Medicamento>;
+}
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4><i class="bi bi-cart-plus"></i> Nueva Compra de Mercadería</h4>
+        </div>
+        <div class="card-body">
+            <form id="formCompra">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Seleccionar Laboratorio</label>
+                        <select class="form-select" id="idLaboratorio" required>
+                            <option value="">-- Seleccione un proveedor --</option>
+                            @foreach (var lab in laboratorios)
+                            {
+                                <option value="@lab.IdLaboratorio">@lab.RazonSocial (@lab.Cuit)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <label class="form-label fw-bold">Fecha de Operación</label>
+                        <input type="text" class="form-control text-center" value="@DateTime.Now.ToShortDateString()" disabled />
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold">Producto</label>
+                        <select class="form-select" id="idMedicamento">
+                            <option value="">-- Seleccione Medicamento --</option>
+                            @foreach (var med in medicamentos)
+                            {
+                                <option value="@med.IdMedicamento">@med.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Cantidad</label>
+                        <input type="number" id="cantidad" class="form-control" min="1" value="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success w-100" id="btnAgregar">
+                            <i class="bi bi-plus-circle"></i> Agregar a la lista
+                        </button>
+                    </div>
+                </div>
+
+                <table class="table table-bordered table-striped mt-3" id="tablaDetalle">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @* las filas se agregan dinamicamente desde el script de abajo *@
+                    </tbody>
+                </table>
+
+                <div class="text-end mt-4">
+                    <button type="button" class="btn btn-primary btn-lg" id="btnFinalizar">
+                        Confirmar y Actualizar Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        // detalle de la compra que se arma del lado del cliente antes de enviar
+        let detalleCompra = [];
+
+        document.getElementById("btnAgregar").addEventListener("click", function () {
+            const selectMed = document.getElementById("idMedicamento");
+            const idMed = selectMed.value;
+            const nombreMed = selectMed.options[selectMed.selectedIndex].text;
+            const cant = parseInt(document.getElementById("cantidad").value);
+
+            if (!idMed) { alert("Seleccione un medicamento"); return; }
+            if (cant <= 0) { alert("La cantidad debe ser mayor a 0"); return; }
+
+            detalleCompra.push({
+                IdMedicamento: parseInt(idMed),
+                StockActual: cant
+            });
+
+            const tabla = document.getElementById("tablaDetalle").getElementsByTagName('tbody')[0];
+            const nuevaFila = tabla.insertRow();
+            nuevaFila.innerHTML = `
+                <td>${nombreMed}</td>
+                <td class="text-center">${cant}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarFila(this, ${idMed})">Eliminar</button>
+                </td>
+            `;
+
+            selectMed.selectedIndex = 0;
+            document.getElementById("cantidad").value = 1;
+        });
+
+        function eliminarFila(btn, id) {
+            detalleCompra = detalleCompra.filter(x => x.IdMedicamento != id);
+            const fila = btn.parentNode.parentNode;
+            fila.parentNode.removeChild(fila);
+        }
+
+        document.getElementById("btnFinalizar").addEventListener("click", function() {
+            const idLab = document.getElementById("idLaboratorio").value;
+
+            if(!idLab) { alert("Debe seleccionar un laboratorio"); return; }
+            if(detalleCompra.length === 0) { alert("Debe agregar al menos un producto a la lista"); return; }
+
+            fetch('/Compra/Procesar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(detalleCompra)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert("✅ ¡Compra registrada! El stock ha sido actualizado.");
+                    window.location.href = '/Medicamento/Index';
+                } else {
+                    alert("❌ Error al procesar la compra en el servidor.");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("❌ Error de red o conexión.");
+            });
+        });
+    </script>
+}
